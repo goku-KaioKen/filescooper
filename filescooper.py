@@ -191,26 +191,23 @@ def main():
 
     with ThreadPoolExecutor(max_workers=args.threads) as executor:
         futures = [
-            executor.submit(download_file, url, headers.copy(), args.output, proxies, args.retries, color, allowed_types, min_size, max_size, 'desktop' if args.random_useragent else ('mobile' if args.mobile_useragent else False))
-            for url in urls
+        executor.submit(download_file, url, headers.copy(), args.output, proxies, args.retries,
+                        color, allowed_types, min_size, max_size,
+                        'desktop' if args.random_useragent else ('mobile' if args.mobile_useragent else False))
+        for url in urls
         ]
 
-        progress_bar = tqdm(
-            as_completed(futures),
-            total=len(futures),
-            desc="⏳ Progress",
-            ncols=100,
-            unit="file",
-            bar_format="{l_bar}{bar} | {n_fmt}/{total_fmt} [{elapsed} @ {rate_fmt}]"
-        )
-
-    for future in progress_bar:
-        result, status, size = future.result()
-        results.append(result)
-        log_file.write(result + '\n')
-        if status == 200 and size > 0:
-            total_downloaded += 1
-            total_bytes += size
+        with tqdm(total=len(futures), desc="⏳ Progress", ncols=100, unit="file") as progress_bar:
+            for future in as_completed(futures):
+                result, status, size = future.result()
+                results.append(result)
+                log_file.write(result + '\n')
+                if status == 200 and size > 0:  
+                    total_downloaded += 1
+                    total_bytes += size
+                progress_bar.update(1)  # ✅ Live update here
+        print("\n✔️ Finalizing summary...\n")
+        
     successes = [r for r in results if r.startswith("[✓]")]
     skips     = [r for r in results if r.startswith("[!]")]
     failures  = [r for r in results if r.startswith("[✗]")]
